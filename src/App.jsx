@@ -1,13 +1,42 @@
 /* eslint-disable react/prop-types */
 import { Fragment } from 'react'
+import { useCallback } from 'react'
 import { memo } from 'react'
 import { useState } from 'react'
 import { useEffect } from 'react'
 
+const cinemaId = 30000
+const aggregatorId = 20003
+const sessionId = 21395
+
 const fetchHall = async () => {
   const response = await fetch(
-    'https://test.cinematrix.uz/api/theaterwidget?cinemaid=30000&aggregatorid=20003&sessionid=21395'
+    `https://test.cinematrix.uz/api/theaterwidget?cinemaid=${cinemaId}&aggregatorid=${aggregatorId}&sessionid=${sessionId}`
   )
+  const data = await response.json()
+
+  return data
+}
+
+const book = async ({ seats, eventId, id }) => {
+  const response = await fetch(`https://test.cinematrix.uz/api/order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      cinemaid: cinemaId,
+      aggregatorid: aggregatorId,
+      seanceid: id,
+      releaseid: eventId,
+      email: 'youremail@example.com',
+      phone: '998909224674',
+      return_url: window.location.href,
+      ticket_url: window.location.href,
+      goods: [],
+      seats,
+    }),
+  })
   const data = await response.json()
 
   return data
@@ -16,13 +45,31 @@ const fetchHall = async () => {
 function App() {
   const [hall, setHall] = useState(null)
   const [zoom, setZoom] = useState(1)
+  const [selected, setSelected] = useState([])
+  const [loading, setLoading] = useState(true)
   const step = 0.3
 
   useEffect(() => {
-    fetchHall().then(setHall)
+    fetchHall()
+      .then(setHall)
+      .finally(() => setLoading(false))
   }, [])
 
-  if (!hall) return <p>Loading...</p>
+  const bookCallback = useCallback(async () => {
+    if (!hall?.id || !hall.eventid) return
+    setLoading(true)
+    book({
+      seats: selected,
+      eventId: hall.eventid,
+      id: hall.id,
+    })
+      .then(() => {
+        fetchHall().then(setHall)
+      })
+      .finally(() => setLoading(false))
+  }, [hall?.id, hall?.eventid, selected])
+
+  if (!hall || loading) return <p>Loading...</p>
 
   return (
     <div className="container">
@@ -35,6 +82,9 @@ function App() {
             -
           </button>
         </div>
+        <button className="book-btn" onClick={bookCallback}>
+          Book
+        </button>
         <div
           style={{
             height: hall.hall_height,
@@ -44,14 +94,14 @@ function App() {
           }}
           className="hall"
         >
-          <Hall hall={hall} />
+          <Hall hall={hall} selected={selected} setSelected={setSelected} />
         </div>
       </div>
     </div>
   )
 }
 
-const Hall = memo(({ hall }) => {
+const Hall = memo(({ hall, selected, setSelected }) => {
   return (
     <>
       {hall.sectors.map((sector, index) => (
@@ -59,7 +109,13 @@ const Hall = memo(({ hall }) => {
           {sector.rows.map((row) => (
             <Fragment key={row.number}>
               {row.seats.map((seat) => (
-                <Seat key={seat.id} seat={seat} />
+                <Seat
+                  key={seat.ticket_id}
+                  row={row.number}
+                  seat={seat}
+                  selected={selected}
+                  setSelected={setSelected}
+                />
               ))}
             </Fragment>
           ))}
@@ -69,24 +125,46 @@ const Hall = memo(({ hall }) => {
   )
 })
 
-const Seat = ({ seat }) => {
-  const [selected, setSelected] = useState(false)
+const Seat = ({ seat, selected, setSelected, row }) => {
+  const isSelected = selected.some((s) => s.id === seat.ticket_id)
+
   return (
     <div
       className="seat"
-      onClick={() => setSelected(!selected)}
+      onClick={() => {
+        if (!seat.is_available) return
+
+        setSelected((prev) => {
+          if (isSelected) {
+            return prev.filter((s) => s.id !== seat.ticket_id)
+          } else {
+            return prev.concat({
+              id: seat.ticket_id,
+              seat: seat.number,
+              price: seat.price,
+              row,
+            })
+          }
+        })
+      }}
       style={{
-        height: seat.r,
-        width: seat.r,
-        borderRadius: seat.r,
+        height: 10,
+        width: 10,
+        borderRadius: 9999,
         left: seat.x,
         top: seat.y,
-        backgroundColor: selected ? 'red' : 'transparent',
+        backgroundColor: !seat.is_available
+          ? 'red'
+          : isSelected
+          ? 'blue'
+          : 'transparent',
       }}
     >
       <span
         style={{
-          fontSize: seat.r / 1.7,
+          fontSize: 6,
+          color: isSelected || !seat.is_available ? 'white' : 'black',
+          fontWeight: 'bold',
         }}
       >
         {seat.number}
