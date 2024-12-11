@@ -66,3 +66,33 @@ body {
   position: relative;
   padding: 10px 20px;
 }
+
+.booking_info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.booking_info div {
+  max-width: 430px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.booking_info div a {
+  background-color: aliceblue;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.booking_info div a img {
+  height: 40px;
+}

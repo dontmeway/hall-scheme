@@ -39,6 +39,8 @@ const book = async ({ seats, eventId, id }) => {
   })
   const data = await response.json()
 
+  if (!response.ok) throw new Error(data.message)
+
   return data
 }
 
@@ -47,6 +49,7 @@ function App() {
   const [zoom, setZoom] = useState(1)
   const [selected, setSelected] = useState([])
   const [loading, setLoading] = useState(true)
+  const [bookingInfo, setBookingInfo] = useState(null)
   const step = 0.3
 
   useEffect(() => {
@@ -63,9 +66,7 @@ function App() {
       eventId: hall.eventid,
       id: hall.id,
     })
-      .then(() => {
-        fetchHall().then(setHall)
-      })
+      .then(setBookingInfo)
       .finally(() => setLoading(false))
   }, [hall?.id, hall?.eventid, selected])
 
@@ -73,29 +74,47 @@ function App() {
 
   return (
     <div className="container">
-      <div className="hall_wrapper">
-        <div className="zoom">
-          <button key="zoom-in" onClick={() => setZoom(zoom + step)}>
-            +
+      {bookingInfo ? (
+        <BookingInfo bookingInfo={bookingInfo} />
+      ) : (
+        <div className="hall_wrapper">
+          <div className="zoom">
+            <button key="zoom-in" onClick={() => setZoom(zoom + step)}>
+              +
+            </button>
+            <button key="zoom-out" onClick={() => setZoom(zoom - step)}>
+              -
+            </button>
+          </div>
+          <button className="book-btn" onClick={bookCallback}>
+            Book
           </button>
-          <button key="zoom-out" onClick={() => setZoom(zoom - step)}>
-            -
-          </button>
+          <div
+            style={{
+              height: hall.hall_height,
+              width: hall.hall_width,
+              position: 'relative',
+              transform: `scale(${zoom})`,
+            }}
+            className="hall"
+          >
+            <Hall hall={hall} selected={selected} setSelected={setSelected} />
+          </div>
         </div>
-        <button className="book-btn" onClick={bookCallback}>
-          Book
-        </button>
-        <div
-          style={{
-            height: hall.hall_height,
-            width: hall.hall_width,
-            position: 'relative',
-            transform: `scale(${zoom})`,
-          }}
-          className="hall"
-        >
-          <Hall hall={hall} selected={selected} setSelected={setSelected} />
-        </div>
+      )}
+    </div>
+  )
+}
+
+const BookingInfo = ({ bookingInfo }) => {
+  return (
+    <div className="booking_info">
+      <div>
+        {bookingInfo.Payments.map((payment) => (
+          <a href={payment.PayUrl} key={payment.Type}>
+            <img src={payment.IconUrl} alt={payment.Type} />
+          </a>
+        ))}
       </div>
     </div>
   )
